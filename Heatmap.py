@@ -30,8 +30,8 @@ def f(x):
 
 #Image dimensions:
 
-xres = 100
-yres = 100
+xres = 50
+yres = 50
 heatmap1 = np.empty((xres,yres))
 heatmap2 = np.empty((xres,yres))
 
@@ -40,76 +40,79 @@ heatmap2 = np.empty((xres,yres))
 indexX = 0
 indexY = 0
 for gamma in np.linspace(0,1,xres):
-
-	indexY = 0
-
+	indexX = 0
 	for lamb in np.linspace(0,1,yres):
-
 		#Recuperamos las condiciones iniciales:
 
-		Sv[0]=0.25
-		Iv[0]=0.25
-		Snv[0]=0.25
-		Inv[0]=0.25
+		Sv = 0.25
+		Iv = 0.25
+		Snv = 0.25
+		Inv = 0.25
+
+		Vmean = 0
+		Imean = 0
 
 		for i in range(tmax-1):
-		    V[i]=Sv[i]+Iv[i]
-		    I[i]=Iv[i]+Inv[i]
+		    V = Sv + Iv
+		    I = Iv + Inv
+
+		    Vmean += V/tmax
+		    Imean += I/tmax
 
 		    with warnings.catch_warnings():
 		        
 		        warnings.filterwarnings('error')
 
 		        try:
-		            Pv[i]=-c-T*Iv[i]/(Iv[i]+Sv[i])
+		            Pv = -c-T*Iv/(Iv+Sv)
 		        except Warning:
-		        	print("Warning")
-		        	Pv[i] = -c -T
+		        	Pv = -c -T
 
 		        try:
-		            Pnv[i]=-T*Inv[i]/(Inv[i]+Snv[i])
+		            Pnv = -T*Inv/(Inv+Snv)
 		        except Warning:
-		        	print("Warning")
-		        	Pnv[i] = -T
+		        	Pnv = -T
 
 
-		    Tvnv[i]=f(Pnv[i]-Pv[i])
-		    Tnvv[i]=f(Pv[i]-Pnv[i])
+		    Tvnv = f(Pnv - Pv)
+		    Tnvv = f(Pv - Pnv)
 
-		    qv[i]=1-(1-lamb*gamma*(gamma*Iv[i]+Inv[i]))**k
-		    qnv[i]=1-(1-lamb*(gamma*Iv[i]+Inv[i]))**k
+		    qv=1-(1-lamb*gamma*(gamma*Iv+Inv))**k
+		    qnv=1-(1-lamb*(gamma*Iv+Inv))**k
 		    
-		    Sv[i+1]=(1-Tvnv[i])*(Sv[i]*(1-qv[i])+Iv[i]*mu)+Tnvv[i]*(Snv[i]*(1-qv[i])+Inv[i]*mu)
-		    Iv[i+1]=Tvnv[i]*(Sv[i]*(1-qnv[i])+Iv[i]*mu)+(1-Tnvv[i])*(Snv[i]*(1-qnv[i])+Inv[i]*mu)
-		    Snv[i+1]=(1-Tvnv[i])*(Sv[i]*qv[i]+Iv[i]*(1-mu))+Tnvv[i]*(Snv[i]*qv[i]+Inv[i]*(1-mu))
-		    Inv[i+1]=Tvnv[i]*(Sv[i]*qnv[i]+Iv[i]*(1-mu))+(1-Tnvv[i])*(Snv[i]*qnv[i]+Inv[i]*(1-mu))
+		    newSv=(1-Tvnv)*(Sv*(1-qv)+Iv*mu)+Tnvv*(Snv*(1-qv)+Inv*mu)
+		    newSnv=Tvnv*(Sv*(1-qnv)+Iv*mu)+(1-Tnvv)*(Snv*(1-qnv)+Inv*mu)
+		    newIv=(1-Tvnv)*(Sv*qv+Iv*(1-mu))+Tnvv*(Snv*qv+Inv*(1-mu))
+		    newInv=Tvnv*(Sv*qnv+Iv*(1-mu))+(1-Tnvv)*(Snv*qnv+Inv*(1-mu))
 
-		V[tmax-1]=Sv[tmax-1]+Iv[tmax-1]
-		I[tmax-1]=Iv[tmax-1]+Inv[tmax-1]
+		    Sv, Snv, Iv, Inv = newSv, newSnv, newIv, newInv
 
-		Vmean = np.mean(V[tTermal:])
-		Imean = np.mean(I[tTermal:])
+
+		Vmean += (Sv+Iv)/tmax
+		Imean += (Iv + Inv)/tmax
 
 		heatmap1[indexX, indexY] = Vmean
 		heatmap2[indexX, indexY] = Imean
 
-		indexY += 1
+		indexX += 1
 
-	indexX += 1
+	indexY += 1
 
+
+#Gráficos:
 
 plt.subplot(121)
-imageV = plt.imshow(heatmap1, cmap='hot', interpolation='nearest')
+imageV = plt.imshow(heatmap1, cmap='hot', interpolation='nearest', origin="lower")
 plt.colorbar(imageV)
 plt.title("Vacunados")
-plt.xlabel("gamma")
-plt.ylabel("lambda")
+plt.xlabel("Probabilidad de fallo vacuna (γ)")
+plt.ylabel("Probabilidad de transmisión (λ)")
 
 plt.subplot(122)
-imageI = plt.imshow(heatmap2, cmap='hot', interpolation='nearest')
+imageI = plt.imshow(heatmap2, cmap='hot', interpolation='nearest', origin="lower")
 plt.colorbar(imageI)
 plt.title("Infectados")
-plt.xlabel("gamma")
-plt.ylabel("lambda")
+plt.xlabel("Probabilidad de fallo vacuna (γ)")
+plt.ylabel("Probabilidad de transmisión (λ)")
 
 plt.show()
