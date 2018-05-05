@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 import multiprocessing
-
+from matplotlib.ticker import FormatStrFormatter
 
 #Parametros iniciales:
 
@@ -21,98 +21,142 @@ Sv, Iv, Snv, Inv, qv, qnv, Tvnv, Tnvv, Pv, Pnv, V, I = (np.empty(tmax) for i in 
 #Funcion de probabilidad:
 
 def f(x):
-    #if x<0:
-    #    return 0
-    #else:
-    #    return x/M
+    if x<0:
+        return 0
+    else:
+        return x/M
     
-    return (1/(1+np.exp(-beta*x)))
+    #return (1/(1+np.exp(-beta*x)))
 
 #Image dimensions:
 
-xres = 50
-yres = 50
-heatmap1 = np.empty((xres,yres))
-heatmap2 = np.empty((xres,yres))
+xres = 100
+yres = 100
+
+#Funcion simulacion:
+
+def simulation(arguments):
+
+	lamb = arguments[0]
+	gamma = arguments[1]
+
+	Sv = 0.25
+	Iv = 0.25
+	Snv = 0.25
+	Inv = 0.25
+
+	Vmean = 0
+	Imean = 0
+
+	for i in range(tmax-1):
+	    V = Sv + Iv
+	    I = Iv + Inv
+
+	    Vmean += V/tmax
+	    Imean += I/tmax
+
+	    with warnings.catch_warnings():
+	        
+	        warnings.filterwarnings('error')
+
+	        try:
+	            Pv = -c-T*Iv/(Iv+Sv)
+	        except Warning:
+	        	Pv = -c -T
+
+	        try:
+	            Pnv = -T*Inv/(Inv+Snv)
+	        except Warning:
+	        	Pnv = -T
+
+
+	    Tvnv = f(Pnv - Pv)
+	    Tnvv = f(Pv - Pnv)
+
+	    qv=1-(1-lamb*gamma*(gamma*Iv+Inv))**k
+	    qnv=1-(1-lamb*(gamma*Iv+Inv))**k
+	    
+	    newSv=(1-Tvnv)*(Sv*(1-qv)+Iv*mu)+Tnvv*(Snv*(1-qv)+Inv*mu)
+	    newSnv=Tvnv*(Sv*(1-qnv)+Iv*mu)+(1-Tnvv)*(Snv*(1-qnv)+Inv*mu)
+	    newIv=(1-Tvnv)*(Sv*qv+Iv*(1-mu))+Tnvv*(Snv*qv+Inv*(1-mu))
+	    newInv=Tvnv*(Sv*qnv+Iv*(1-mu))+(1-Tnvv)*(Snv*qnv+Inv*(1-mu))
+
+	    Sv, Snv, Iv, Inv = newSv, newSnv, newIv, newInv
+
+
+	Vmean += (Sv+Iv)/tmax
+	Imean += (Iv + Inv)/tmax
+
+	return((Vmean, Imean))
+
+
 
 #Main loop
+if __name__ == '__main__':
 
-indexX = 0
-indexY = 0
-for gamma in np.linspace(0,1,xres):
-	indexX = 0
-	for lamb in np.linspace(0,1,yres):
-		#Recuperamos las condiciones iniciales:
+	pool = multiprocessing.Pool(processes = multiprocessing.cpu_count())
 
-		Sv = 0.25
-		Iv = 0.25
-		Snv = 0.25
-		Inv = 0.25
+	input = []
+	for gamma in np.linspace(0,1,yres):
+		for lamb in np.linspace(0,1,xres):
+			input.append((gamma,lamb))
 
-		Vmean = 0
-		Imean = 0
+	results = pool.map(simulation, input)
 
-		for i in range(tmax-1):
-		    V = Sv + Iv
-		    I = Iv + Inv
+	pool.close()
+	pool.join()
 
-		    Vmean += V/tmax
-		    Imean += I/tmax
+	resultsV = []
+	resultsI = []
 
-		    with warnings.catch_warnings():
-		        
-		        warnings.filterwarnings('error')
+	for i in results:
+		resultsV.append(i[0])
+		resultsI.append(i[1])
 
-		        try:
-		            Pv = -c-T*Iv/(Iv+Sv)
-		        except Warning:
-		        	Pv = -c -T
-
-		        try:
-		            Pnv = -T*Inv/(Inv+Snv)
-		        except Warning:
-		        	Pnv = -T
+	heatmap1 = np.reshape(resultsV, (yres, xres))
+	heatmap2 = np.reshape(resultsI, (yres, xres))
 
 
-		    Tvnv = f(Pnv - Pv)
-		    Tnvv = f(Pv - Pnv)
+	#Gráficos:
 
-		    qv=1-(1-lamb*gamma*(gamma*Iv+Inv))**k
-		    qnv=1-(1-lamb*(gamma*Iv+Inv))**k
-		    
-		    newSv=(1-Tvnv)*(Sv*(1-qv)+Iv*mu)+Tnvv*(Snv*(1-qv)+Inv*mu)
-		    newSnv=Tvnv*(Sv*(1-qnv)+Iv*mu)+(1-Tnvv)*(Snv*(1-qnv)+Inv*mu)
-		    newIv=(1-Tvnv)*(Sv*qv+Iv*(1-mu))+Tnvv*(Snv*qv+Inv*(1-mu))
-		    newInv=Tvnv*(Sv*qnv+Iv*(1-mu))+(1-Tnvv)*(Snv*qnv+Inv*(1-mu))
+	nxticks = 6
+	nyticks = 6
+	ncolorticks = 10
 
-		    Sv, Snv, Iv, Inv = newSv, newSnv, newIv, newInv
+	ax1 = plt.subplot(121)
+	imageV = plt.imshow(heatmap1, cmap='hot', interpolation='nearest', origin="lower")
+	plt.clim(0,1)
+	plt.colorbar(imageV)
+	plt.title("Vacunados")
+	plt.xlabel("Probabilidad de fallo vacuna (γ)")
+	plt.ylabel("Probabilidad de transmisión (λ)")
 
+	ax1.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+	xvalues = np.linspace(-0.5,xres-0.5,nxticks)
+	xlabels = [(x+0.5)/xres for x in xvalues]
+	plt.xticks(xvalues, xlabels)
 
-		Vmean += (Sv+Iv)/tmax
-		Imean += (Iv + Inv)/tmax
+	ax1.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+	yvalues = np.linspace(-0.5,yres-0.5,nyticks)
+	ylabels = [(y+0.5)/yres for y in yvalues]
+	plt.yticks(yvalues, ylabels)
 
-		heatmap1[indexX, indexY] = Vmean
-		heatmap2[indexX, indexY] = Imean
+	ax2 = plt.subplot(122)
+	imageI = plt.imshow(heatmap2, cmap='hot', interpolation='nearest', origin="lower")
+	plt.clim(0,1)
+	plt.colorbar(imageI)
+	plt.title("Infectados")
+	plt.xlabel("Probabilidad de fallo vacuna (γ)")
+	plt.ylabel("Probabilidad de transmisión (λ)")
 
-		indexX += 1
+	ax2.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+	xvalues = np.linspace(-0.5,xres-0.5,nxticks)
+	xlabels = [(x+0.5)/xres for x in xvalues]
+	plt.xticks(xvalues, xlabels)
 
-	indexY += 1
+	ax2.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+	yvalues = np.linspace(-0.5,yres-0.5,nyticks)
+	ylabels = [(y+0.5)/yres for y in yvalues]
+	plt.yticks(yvalues, ylabels)
 
-
-#Gráficos:
-
-plt.subplot(121)
-imageV = plt.imshow(heatmap1, cmap='hot', interpolation='nearest', origin="lower")
-plt.colorbar(imageV)
-plt.title("Vacunados")
-plt.xlabel("Probabilidad de fallo vacuna (γ)")
-plt.ylabel("Probabilidad de transmisión (λ)")
-
-plt.subplot(122)
-imageI = plt.imshow(heatmap2, cmap='hot', interpolation='nearest', origin="lower")
-plt.colorbar(imageI)
-plt.title("Infectados")
-plt.xlabel("Probabilidad de fallo vacuna (γ)")
-plt.ylabel("Probabilidad de transmisión (λ)")
-
-plt.show()
+	plt.show()
