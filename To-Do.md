@@ -10,5 +10,5 @@ Leire:
  - Fermi vs Escalón
  
  Raúl:
- - Mapaas de calor
+ - Mapas de calor
  - Leyendas, títulos y ejes de los gráficos
