@@ -52,8 +52,8 @@ def simulation(arguments):
 	    V = Sv + Iv
 	    I = Iv + Inv
 
-	    Vmean += V/tmax
-	    Imean += I/tmax
+	    Vmean += V
+	    Imean += I
 
 	    with warnings.catch_warnings():
 	        
@@ -76,16 +76,19 @@ def simulation(arguments):
 	    qv=1-(1-lamb*gamma*(gamma*Iv+Inv))**k
 	    qnv=1-(1-lamb*(gamma*Iv+Inv))**k
 	    
-	    newSv=(1-Tvnv)*(Sv*(1-qv)+Iv*mu)+Tnvv*(Snv*(1-qv)+Inv*mu)
-	    newSnv=Tvnv*(Sv*(1-qnv)+Iv*mu)+(1-Tnvv)*(Snv*(1-qnv)+Inv*mu)
-	    newIv=(1-Tvnv)*(Sv*qv+Iv*(1-mu))+Tnvv*(Snv*qv+Inv*(1-mu))
-	    newInv=Tvnv*(Sv*qnv+Iv*(1-mu))+(1-Tnvv)*(Snv*qnv+Inv*(1-mu))
+	    newSv = (1-Tvnv)*(Sv*(1-qv)+Iv*mu)+Tnvv*(Snv*(1-qv)+Inv*mu)
+	    newSnv = Tvnv*(Sv*(1-qnv)+Iv*mu)+(1-Tnvv)*(Snv*(1-qnv)+Inv*mu)
+	    newIv = (1-Tvnv)*(Sv*qv+Iv*(1-mu))+Tnvv*(Snv*qv+Inv*(1-mu))
+	    Inv = Tvnv*(Sv*qnv+Iv*(1-mu))+(1-Tnvv)*(Snv*qnv+Inv*(1-mu))
 
-	    Sv, Snv, Iv, Inv = newSv, newSnv, newIv, newInv
+	    Sv, Snv, Iv = newSv, newSnv, newIv
 
 
-	Vmean += (Sv+Iv)/tmax
-	Imean += (Iv + Inv)/tmax
+	Vmean += (Sv+Iv)
+	Imean += (Iv + Inv)
+
+	Vmean /= tmax
+	Imean /= tmax
 
 	return((Vmean, Imean))
 
@@ -97,6 +100,7 @@ if __name__ == '__main__':
 	pool = multiprocessing.Pool(processes = multiprocessing.cpu_count())
 
 	input = []
+
 	for gamma in np.linspace(0,1,yres):
 		for lamb in np.linspace(0,1,xres):
 			input.append((gamma,lamb))
@@ -104,14 +108,15 @@ if __name__ == '__main__':
 	results = pool.map(simulation, input)
 
 	pool.close()
-	pool.join()
 
-	resultsV = []
-	resultsI = []
+	resultsV = np.empty(xres*yres)
+	resultsI = np.empty(xres*yres)
 
+	l = 0
 	for i in results:
-		resultsV.append(i[0])
-		resultsI.append(i[1])
+		resultsV[l] = i[0]
+		resultsI[l] = i[1]
+		l += 1
 
 	heatmap1 = np.reshape(resultsV, (yres, xres))
 	heatmap2 = np.reshape(resultsI, (yres, xres))
@@ -150,13 +155,9 @@ if __name__ == '__main__':
 	plt.ylabel("Probabilidad de transmisión (λ)")
 
 	ax2.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-	xvalues = np.linspace(-0.5,xres-0.5,nxticks)
-	xlabels = [(x+0.5)/xres for x in xvalues]
 	plt.xticks(xvalues, xlabels)
 
 	ax2.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-	yvalues = np.linspace(-0.5,yres-0.5,nyticks)
-	ylabels = [(y+0.5)/yres for y in yvalues]
 	plt.yticks(yvalues, ylabels)
 
 	plt.show()
