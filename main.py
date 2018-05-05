@@ -1,28 +1,29 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import warnings
 
 #Parametros iniciales:
 
-beta=3.0
-mu=0.1
-lamb=0.4
-gamma=0.0
-k=1.0
-T=20.0
-c=1.0
-M=(T+c)
+beta = 3.0
+mu = 0.1
+lamb = 0.4
+gamma = 0.0
+k = 1.0
+T = 20.0
+c = 1.0
+M = (T+c)
 
-tmax=100
+tmax = 200
 
-Sv, Iv, Snv, Inv, qv, qnv, Tvnv, Tnvv, Pv, Pnv, V, I = (np.zeros(tmax) for i in range(12))
+Sv, Iv, Snv, Inv, qv, qnv, Tvnv, Tnvv, Pv, Pnv, V, I = (np.empty(tmax) for i in range(12))
 
 #Condiciones iniciales:
 
-Sv[0]=0.45
-Iv[0]=0.05
-Snv[0]=0.35
-Inv[0]=0.15
+Sv[0]=1.0
+Iv[0]=0.0
+Snv[0]=0.0
+Inv[0]=0.0
 
 #Funcion de probabilidad:
 
@@ -39,9 +40,21 @@ def f(x):
 for i in range(tmax-1):
     V[i]=Sv[i]+Iv[i]
     I[i]=Iv[i]+Inv[i]
-    
-    Pv[i]=-c-T*Iv[i]/(Iv[i]+Sv[i])
-    Pnv[i]=-T*Inv[i]/(Inv[i]+Snv[i])
+
+    with warnings.catch_warnings():
+        
+        warnings.filterwarnings('error')
+
+        try:
+            Pv[i]=-c-T*Iv[i]/(Iv[i]+Sv[i])
+        except Warning:
+            Pv[i] = -c -T
+
+        try:
+            Pnv[i]=-T*Inv[i]/(Inv[i]+Snv[i])
+        except Warning:
+            Pnv[i] = -T
+
 
     Tvnv[i]=f(Pnv[i]-Pv[i])
     Tnvv[i]=f(Pv[i]-Pnv[i])
