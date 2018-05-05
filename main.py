@@ -63,8 +63,8 @@ for i in range(tmax-1):
     qnv[i]=1-(1-lamb*(gamma*Iv[i]+Inv[i]))**k
     
     Sv[i+1]=(1-Tvnv[i])*(Sv[i]*(1-qv[i])+Iv[i]*mu)+Tnvv[i]*(Snv[i]*(1-qv[i])+Inv[i]*mu)
-    Iv[i+1]=Tvnv[i]*(Sv[i]*(1-qnv[i])+Iv[i]*mu)+(1-Tnvv[i])*(Snv[i]*(1-qnv[i])+Inv[i]*mu)
-    Snv[i+1]=(1-Tvnv[i])*(Sv[i]*qv[i]+Iv[i]*(1-mu))+Tnvv[i]*(Snv[i]*qv[i]+Inv[i]*(1-mu))
+    Snv[i+1]=Tvnv[i]*(Sv[i]*(1-qnv[i])+Iv[i]*mu)+(1-Tnvv[i])*(Snv[i]*(1-qnv[i])+Inv[i]*mu)
+    Iv[i+1]=(1-Tvnv[i])*(Sv[i]*qv[i]+Iv[i]*(1-mu))+Tnvv[i]*(Snv[i]*qv[i]+Inv[i]*(1-mu))
     Inv[i+1]=Tvnv[i]*(Sv[i]*qnv[i]+Iv[i]*(1-mu))+(1-Tnvv[i])*(Snv[i]*qnv[i]+Inv[i]*(1-mu))
 
 V[tmax-1]=Sv[tmax-1]+Iv[tmax-1]
