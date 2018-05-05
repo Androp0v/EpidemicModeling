@@ -13,18 +13,7 @@ M=(T+c)
 
 tmax=100
 
-Sv=np.zeros(tmax)
-Iv=np.zeros(tmax)
-Snv=np.zeros(tmax)
-Inv=np.zeros(tmax)
-qv=np.zeros(tmax)
-qnv=np.zeros(tmax)
-Tvnv=np.zeros(tmax)
-Tnvv=np.zeros(tmax)
-Pv=np.zeros(tmax)
-Pnv=np.zeros(tmax)
-V=np.zeros(tmax)
-I=np.zeros(tmax)
+Sv, Iv, Snv, Inv, qv, qnv, Tvnv, Tnvv, Pv, Pnv, V, I = (np.zeros(tmax) for i in range(12))
 
 Sv[0]=0.45
 Iv[0]=0.05
