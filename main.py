@@ -53,9 +53,21 @@ for i in range(tmax-1):
     Iv[i+1]=Tvnv[i]*(Sv[i]*(1-qnv[i])+Iv[i]*mu)+(1-Tnvv[i])*(Snv[i]*(1-qnv[i])+Inv[i]*mu)
     Snv[i+1]=(1-Tvnv[i])*(Sv[i]*qv[i]+Iv[i]*(1-mu))+Tnvv[i]*(Snv[i]*qv[i]+Inv[i]*(1-mu))
     Inv[i+1]=Tvnv[i]*(Sv[i]*qnv[i]+Iv[i]*(1-mu))+(1-Tnvv[i])*(Snv[i]*qnv[i]+Inv[i]*(1-mu))
+
+V[tmax-1]=Sv[tmax-1]+Iv[tmax-1]
+I[tmax-1]=Iv[tmax-1]+Inv[tmax-1]
+
     
 #Gráficos:
 
-plt.plot(V)
-plt.plot(I)
+plt.plot(V, label = "Vacunados")
+plt.plot(I, label = "Infectados")
+
+#Títulos de gráfico y ejes, leyenda:
+
+plt.title("Evolución temporal de la fracción de vacunados e infectados", fontweight = "bold")
+plt.xlabel("Número de iteraciones")
+plt.ylabel("Fracción respecto al total")
+plt.legend()
+
 plt.show()
