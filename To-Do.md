@@ -6,8 +6,8 @@ Leire:
  
  Alex:
  - Explicación parámetros utilizados
- - Fermi vs Escalón
  - Explicar ecuaciones SIS
+ - Fermi vs Escalón
  
  Raúl:
  - Mapaas de calor
