@@ -2,6 +2,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
+#Parametros iniciales:
+
 beta=3.0
 mu=0.1
 lamb=0.4
@@ -15,10 +17,14 @@ tmax=100
 
 Sv, Iv, Snv, Inv, qv, qnv, Tvnv, Tnvv, Pv, Pnv, V, I = (np.zeros(tmax) for i in range(12))
 
+#Condiciones iniciales:
+
 Sv[0]=0.45
 Iv[0]=0.05
 Snv[0]=0.35
 Inv[0]=0.15
+
+#Funcion de probabilidad:
 
 def f(x):
     if x<0:
@@ -26,11 +32,11 @@ def f(x):
     else:
         return x/M
     
-    #return (1/(1+math.exp(-beta*x)))
+    #return (1/(1+np.exp(-beta*x)))
     
-i=0
+#Bucle principal de iteracion con ecuaciones SIS:
 
-while i<(tmax-1):
+for i in range(tmax-1):
     V[i]=Sv[i]+Iv[i]
     I[i]=Iv[i]+Inv[i]
     
@@ -48,9 +54,8 @@ while i<(tmax-1):
     Snv[i+1]=(1-Tvnv[i])*(Sv[i]*qv[i]+Iv[i]*(1-mu))+Tnvv[i]*(Snv[i]*qv[i]+Inv[i]*(1-mu))
     Inv[i+1]=Tvnv[i]*(Sv[i]*qnv[i]+Iv[i]*(1-mu))+(1-Tnvv[i])*(Snv[i]*qnv[i]+Inv[i]*(1-mu))
     
-    i=i+1
-    
-#plt.scatter(I,V)
+#Gráficos:
+
 plt.plot(V)
 plt.plot(I)
 plt.show()
