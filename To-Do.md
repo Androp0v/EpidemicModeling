@@ -10,5 +10,9 @@ Leire:
  - Fermi vs Escalón
  
  Raúl:
- - Mapas de calor
+ - Mapas de calor (DONE)
  - Leyendas, títulos y ejes de los gráficos
+ - Amplitud de la oscilación
+ - Histograma
+ - Justificación termalización
+ 
