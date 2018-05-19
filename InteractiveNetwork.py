@@ -11,8 +11,8 @@ positions = nx.spring_layout(network)
 #Initial parameters:
 
 mu = 0.1
-lamb = 0.8
-gamma = 0.1
+lamb = 0.5
+gamma = 0.5
 
 T = 20.0
 c = 1.0
@@ -37,14 +37,17 @@ node_colors = []
 node_borders = []
 node_sizes = []
 
-infectedCount = [0]
-healthyCount = [0]
-vaccinatedCount = [0]
+infectedCount = []
+healthyCount = []
+vaccinatedCount = []
+TvnvCount = []
+TnvvCount = []
 
 Sv = 0
 Iv = 0
 Snv = 0
 Inv = 0
+
 
 #Initial graph:
 
@@ -128,11 +131,6 @@ def update_network(frame):
 					if network.node[str(i)]['Health'] == 'Infected':
 						print("Already infected node!")
 
-	#Sobra, eliminar pronto:
-
-	infectedCount.append(Iv + Inv)
-	healthyCount.append(Sv + Snv)
-	vaccinatedCount.append(Iv + Sv)
 
 	#Update Sv, Iv, Snv, Inv to calculate payoffs in next iteration:
 
@@ -150,18 +148,38 @@ def update_network(frame):
 			else:
 				Iv += 1
 
+	#Add data for line plots:
+
+	infectedCount.append(Iv + Inv)
+	healthyCount.append(Sv + Snv)
+	vaccinatedCount.append(Iv + Sv)
+	TvnvCount.append(Tvnv)
+	TnvvCount.append(Tnvv)
+
 
 #Plotting
 
-figure, (networkPlot, linePlot) = plt.subplots(1,2)
+figure, (row1, row2) = plt.subplots(2,2)
+networkPlot = row1[0]
+linePlot = row1[1]
+linePlot2 = row2[1]
+row2[0].axis('off') #Hide plot axis over network
+
 #figure, networkPlot = plt.subplots(1,1)
 
 def update_plot(frame):
 	#plt.cla()
 	nx.draw(network, pos = positions, ax = networkPlot, node_color = node_colors, edgecolors = node_borders, node_size = node_sizes, width = 0.5)
+	
 	linePlot.plot(infectedCount, color = 'r')
 	linePlot.plot(healthyCount, color = 'g')
 	linePlot.plot(vaccinatedCount, color = 'b')
+	linePlot.set_ylim((0,300))
+
+	linePlot2.plot(TvnvCount, color = 'black', linewidth = 1)
+	linePlot2.plot(TnvvCount, color = 'b', linewidth = 1)
+	#linePlot2.set_ylim((0,1))
+
 	networkPlot.set_position([0, 0, 0.5, 1]) #Fill axis area (with subplot)
 	#networkPlot.set_position([0, 0, 1, 1]) #Fill axis area (alone)
 
