@@ -6,31 +6,33 @@ from matplotlib.animation import FuncAnimation
 from math import log, exp, log10
 
 network = nx.read_edgelist("Red300Nodos.net")
+network = nx.read_edgelist("CycleGraph.net")
 positions = nx.spring_layout(network)
 
 #Initial parameters:
 
 mu = 0.1
-lamb = 0.5
-gamma = 0.5
+
+gamma = 0.8
+lamb = 0.1
 
 T = 20.0
 c = 1.0
 
 M = (T+c)
-beta = 0.03
+beta = 3
 epsilon = 10**(-18)
 
 
 #Helper functions:
 
 def prob(x):
-    if x<0:
-        return 0
-    else:
-        return x/M
+	if x<0:
+		return 0
+	else:
+		return x/M
 
-    #return (1/(1 + exp(-beta*x)))
+	#return (1/(1 + exp(-beta*x)))
 
 #Initial conditions:
 node_colors = []
@@ -51,8 +53,8 @@ Inv = 0
 
 #Initial graph:
 
-for i in range(1,len(network)+1):
-	network.node[str(i)]['Health'] = random.choice(['Healthy', 'Healthy', 'Infected'])
+for i in range(0,len(network)):
+	network.node[str(i)]['Health'] = random.choice(['Healthy', 'Infected'])
 
 	if network.node[str(i)]['Health'] == 'Healthy':
 		node_colors.append('g')
@@ -91,46 +93,58 @@ def update_network(frame):
 
 	global Sv, Iv, Snv, Inv
 
-	Pv = -c -T*(Iv/(Iv + Sv + epsilon))
-	Pnv = -T*(Inv/(Inv + Snv + epsilon))
+	#Pv = -c -T*(Iv/(Iv + Sv + epsilon))
+	#Pnv = -T*(Inv/(Inv + Snv + epsilon))
+
+	try:
+		Pv = -c -T*Iv/(Iv + Sv)
+	except ZeroDivisionError:
+		Pv = -c -T
+
+	try:
+		Pnv = -T*Inv/(Inv + Snv)
+	except ZeroDivisionError:
+		Pnv = -T
 
 	Tvnv = prob(Pnv - Pv)
 	Tnvv = prob(Pv - Pnv)
 
-	for i in range(1,len(network)+1):
+	for i in range(0,len(network)):
 
 		#Change vaccination strategies:
 
 		if network.node[str(i)]['Vaccination'] == 'Vaccinated' and random.random() < Tvnv:
 			network.node[str(i)]['Vaccination'] = 'Not-vaccinated'
-			node_borders[i-1] = 'black'
+			node_borders[i] = 'black'
 
 		elif network.node[str(i)]['Vaccination'] == 'Not-vaccinated' and random.random() < Tnvv:
 			network.node[str(i)]['Vaccination'] = 'Vaccinated'
-			node_borders[i-1] = 'b'
+			node_borders[i] = 'b'
+
+	for i in range(0, len(network)):
 
 		#Infection dynamics:
 
-		if network.node[str(i)]['Health'] == 'Infected' and random.random() < mu: #If it's infected, probability it becomes healthy
-			network.node[str(i)]['Health'] = 'Healthy'
-			node_colors[i - 1] = 'g'
+		if network.node[str(i)]['Health'] == 'Infected': 
+			if random.random() < mu: #If it's infected, probability it becomes healthy
+				network.node[str(i)]['Health'] = 'Healthy'
+				node_colors[i] = 'g'
 
 		else: #If it's healthy, probability it becomes infected
-			for neighbor in network.neighbors(str(i)):
 
-				if network.node[neighbor]['Health'] == 'Infected' and network.node[str(i)]['Health'] == 'Healthy':
-
-					if network.node[str(i)]['Vaccination'] == 'Not-vaccinated' and random.random() < lamb:
-						network.node[str(i)]['Health'] = 'Infected'
-						node_colors[i - 1] = 'r'
-						break
-					elif network.node[str(i)]['Vaccination'] == 'Vaccinated' and random.random() < gamma and random.random() < lamb:
-						network.node[str(i)]['Health'] = 'Infected'
-						node_colors[i - 1] = 'r'
-						break
-					if network.node[str(i)]['Health'] == 'Infected':
-						print("Already infected node!")
-
+			if network.node[str(i)]['Vaccination'] == 'Vaccinated':
+				if random.random() < gamma:
+					for neighbor in network.neighbors(str(i)):
+						if network.node[neighbor]['Health'] == 'Infected' and random.random() < lamb:
+							network.node[str(i)]['Health'] = 'Infected'
+							node_colors[i] = 'r'
+							break
+				else:
+					for neighbor in network.neighbors(str(i)):
+						if network.node[neighbor]['Health'] == 'Infected' and random.random() < lamb:
+							network.node[str(i)]['Health'] = 'Infected'
+							node_colors[i] = 'r'
+							break
 
 	#Update Sv, Iv, Snv, Inv to calculate payoffs in next iteration:
 
@@ -155,6 +169,9 @@ def update_network(frame):
 	vaccinatedCount.append(Iv + Sv)
 	TvnvCount.append(Tvnv)
 	TnvvCount.append(Tnvv)
+
+	if len(vaccinatedCount) > 100:
+		print(np.mean(vaccinatedCount[100:])/300)
 
 
 #Plotting
