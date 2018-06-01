@@ -14,10 +14,11 @@ T = 20.0
 c = 1.0
 
 M = (T+c)
-beta = 0.03
+beta = 3.0
 epsilon = 10**(-18)
 
-Nsteps = 100
+Nterm = 60
+Nsteps = 50
 
 #Image dimensions:
 
@@ -27,25 +28,28 @@ yres = 10
 #Helper functions:
 
 def prob(x):
-    if x < 0:
-        return 0
-    else:
-        return x/M
+    #if x < 0:
+    #    return 0
+    #else:
+    #    return x/M
 
     #return 0.5*(1+beta*x)
 
-    #return (1/(1 + np.exp(-beta*x)))
+    return (1/(1 + np.exp(-beta*x)))
 
 #Funcion simulacion:
 
 def simulation(arguments):
 
-	gamma = arguments[0]
-	lamb = arguments[1]
+	gamma = arguments[1]
+	lamb = arguments[0]
 
 	#Initialize Sv, Iv, Snv, Inv and network:
 
-	network = nx.read_edgelist("Red300Nodos.net")
+	#network = nx.read_edgelist("Red300Nodos.net")
+
+	NumberOfNodes = 9600
+	network = nx.cycle_graph(NumberOfNodes)
 
 	Sv = 0
 	Iv = 0
@@ -54,9 +58,12 @@ def simulation(arguments):
 
 	#Provide initial values for all nodes in the network:
 
-	for i in range(1,len(network)+1):
-		network.node[str(i)]['Health'] = random.choice(['Healthy', 'Infected'])
-		network.node[str(i)]['Vaccination'] = random.choice(['Vaccinated', 'Not-vaccinated'])
+	for node in network:
+
+		network.node[node]['Health'] = random.choice(['Healthy', 'Infected'])
+
+		network.node[node]['Vaccination'] = random.choice(['Vaccinated', 'Not-vaccinated'])
+
 
 	#Compute initial Sv, Iv, Snv, Inv values: 
 
@@ -72,61 +79,79 @@ def simulation(arguments):
 			else:
 				Iv += 1
 
-	#Normalization of Sv, Iv, Snv, Inv:
+	Sv /= NumberOfNodes
+	Snv /= NumberOfNodes
+	Iv /= NumberOfNodes
+	Inv /= NumberOfNodes
 
-	Sv /= 300
-	Iv /= 300
-	Snv /= 300
-	Inv /= 300
+	#Thermalization loop:
 
-	#Measurement loop:	
+	for i in range(Nterm):
 
-	Vmean = 0
-	Imean = 0		
+		#Calculate payoffs:
 
-	for k in range(0, Nsteps):
+		try:
+			Pv = -c -T*Iv/(Iv + Sv)
+		except ZeroDivisionError:
+			Pv = -c -T
 
-		#Payoffs and strategy:
-
-		Pv = -c -T*(Iv/(Iv + Sv + epsilon))
-		Pnv = -T*(Inv/(Inv + Snv + epsilon))
+		try:
+			Pnv = -T*Inv/(Inv + Snv)
+		except ZeroDivisionError:
+			Pnv = -T
 
 		Tvnv = prob(Pnv - Pv)
 		Tnvv = prob(Pv - Pnv)
+	
+		#Change vaccination strategies:
 
-		for i in range(1,len(network)+1):
+		for node in network:
 
-			#Change vaccination strategies:
+			if network.node[node]['Vaccination'] == 'Vaccinated': 
+				if random.random() < Tvnv:
+					network.node[node]['Vaccination'] = 'Not-vaccinated'
 
-			if network.node[str(i)]['Vaccination'] == 'Vaccinated' and random.random() < Tvnv:
-				network.node[str(i)]['Vaccination'] = 'Not-vaccinated'
+			elif network.node[node]['Vaccination'] == 'Not-vaccinated':
+				if random.random() < Tnvv:
+					network.node[node]['Vaccination'] = 'Vaccinated'
 
-			elif network.node[str(i)]['Vaccination'] == 'Not-vaccinated' and random.random() < Tnvv:
-				network.node[str(i)]['Vaccination'] = 'Vaccinated'
+		#Infection dynamics:
 
-			#Infection dynamics:
+		for node in network:
 
-			if network.node[str(i)]['Health'] == 'Infected' and random.random() < mu: #If it's infected, probability it becomes healthy
-				network.node[str(i)]['Health'] = 'Healthy'
+			if network.node[node]['Health'] == 'Infected': 
+				if random.random() < mu: #If it's infected, probability it becomes healthy
+					network.node[node]['Health'] = 'Healthy'
 
 			else: #If it's healthy, probability it becomes infected
-				for neighbor in network.neighbors(str(i)):
 
-					if network.node[neighbor]['Health'] == 'Infected' and network.node[str(i)]['Health'] == 'Healthy':
+				if network.node[node]['Vaccination'] == 'Vaccinated':
+					if random.random() < gamma:
+						for neighbor in network.neighbors(node):
+							if network.node[neighbor]['Health'] == 'Infected' and random.random() < lamb:
+				 				network.node[node]['Health'] = 'Infected'
+				 				break
+				else:
+					for neighbor in network.neighbors(node):
+						if network.node[neighbor]['Health'] == 'Infected' and random.random() < lamb:
+				 			network.node[node]['Health'] = 'Infected'
+				 			break
 
-						if network.node[str(i)]['Vaccination'] == 'Not-vaccinated' and random.random() < lamb:
-							network.node[str(i)]['Health'] = 'Infected'
-							break
-						elif network.node[str(i)]['Vaccination'] == 'Vaccinated' and random.random() < gamma and random.random() < lamb:
-							network.node[str(i)]['Health'] = 'Infected'
-							break
-						if network.node[str(i)]['Health'] == 'Infected':
-							print("Already infected node!")
 
+				# for neighbor in network.neighbors(node):
 
-		#Update Sv, Iv, Snv, Inv to calculate payoffs in next iteration:
+				# 	if network.node[neighbor]['Health'] == 'Infected':
 
-		Sv, Iv, Snv, Inv = (0,0,0,0)
+				# 		if network.node[node]['Vaccination'] == 'Not-vaccinated':
+				# 			if random.random() < lamb:
+				# 				network.node[node]['Health'] = 'Infected'
+				# 				break
+				# 		elif network.node[node]['Vaccination'] == 'Vaccinated':
+				# 			if random.random() < gamma and random.random() < lamb:
+				# 				network.node[node]['Health'] = 'Infected'
+				# 				break
+
+		#Update Sv, Iv, Snv, Iv:
 
 		for node in network:
 			if network.node[node]['Health'] == 'Healthy':
@@ -140,20 +165,114 @@ def simulation(arguments):
 				else:
 					Iv += 1
 
-		#Normalization of Sv, Iv, Snv, Inv:
+		Sv /= NumberOfNodes
+		Snv /= NumberOfNodes
+		Iv /= NumberOfNodes
+		Inv /= NumberOfNodes
 
-		Sv /= 300
-		Iv /= 300
-		Snv /= 300
-		Inv /= 300
+	#Measurement loop:
+
+	Vmean = 0
+	Imean = 0
+
+	for i in range(Nsteps):
+
+		#Calculate payoffs:
+
+		try:
+			Pv = -c -T*Iv/(Iv + Sv)
+		except ZeroDivisionError:
+			Pv = -c -T
+
+		try:
+			Pnv = -T*Inv/(Inv + Snv)
+		except ZeroDivisionError:
+			Pnv = -T
+
+		Tvnv = prob(Pnv - Pv)
+		Tnvv = prob(Pv - Pnv)
+	
+		#Change vaccination strategies:
+
+		for node in network:
+
+			if network.node[node]['Vaccination'] == 'Vaccinated': 
+				if random.random() < Tvnv:
+					network.node[node]['Vaccination'] = 'Not-vaccinated'
+
+			elif network.node[node]['Vaccination'] == 'Not-vaccinated':
+				if random.random() < Tnvv:
+					network.node[node]['Vaccination'] = 'Vaccinated'
+
+		#Infection dynamics:
+
+		for node in network:
+
+			if network.node[node]['Health'] == 'Infected': 
+				if random.random() < mu: #If it's infected, probability it becomes healthy
+					network.node[node]['Health'] = 'Healthy'
+
+			else: #If it's healthy, probability it becomes infected
+
+				if network.node[node]['Vaccination'] == 'Vaccinated':
+					if random.random() < gamma:
+						for neighbor in network.neighbors(node):
+							if network.node[neighbor]['Health'] == 'Infected' and random.random() < lamb:
+				 				network.node[node]['Health'] = 'Infected'
+				 				break
+				else:
+					for neighbor in network.neighbors(node):
+						if network.node[neighbor]['Health'] == 'Infected' and random.random() < lamb:
+				 			network.node[node]['Health'] = 'Infected'
+				 			break
+
+
+				# for neighbor in network.neighbors(node):
+
+				# 	if network.node[neighbor]['Health'] == 'Infected':
+
+				# 		if network.node[node]['Vaccination'] == 'Not-vaccinated':
+				# 			if random.random() < lamb:
+				# 				network.node[node]['Health'] = 'Infected'
+				# 				break
+				# 		elif network.node[node]['Vaccination'] == 'Vaccinated':
+				# 			if random.random() < gamma and random.random() < lamb:
+				# 				network.node[node]['Health'] = 'Infected'
+				# 				break
+
+		#Update Sv, Iv, Snv, Iv:
+
+		for node in network:
+			if network.node[node]['Health'] == 'Healthy':
+				if network.node[node]['Vaccination'] == 'Vaccinated':
+					Sv += 1
+				else:
+					Snv += 1
+			else:
+				if network.node[node]['Vaccination'] == 'Not-vaccinated':
+					Inv += 1
+				else:
+					Iv += 1
+
+		Sv /= NumberOfNodes
+		Snv /= NumberOfNodes
+		Iv /= NumberOfNodes
+		Inv /= NumberOfNodes
 
 		Vmean += Sv + Iv
 		Imean += Iv + Inv
 
+	#Calculate and return means:
+
 	Vmean /= Nsteps
 	Imean /= Nsteps
 
-	return(Vmean,Imean)
+	return(Vmean, Imean)
+
+
+
+
+
 
 #Main loop:
 
@@ -168,11 +287,19 @@ if __name__ == '__main__':
 			input.append((gamma,lamb))
 
 	results = pool.map(simulation, input)
+	#results2 = pool.map(simulation, input)
+	#results3 = pool.map(simulation, input)
+	# results4 = pool.map(simulation, input)
+	# results5 = pool.map(simulation, input)
 
 	pool.close()
 
 	resultsV = np.empty(xres*yres)
 	resultsI = np.empty(xres*yres)
+	resultsV2 = np.empty(xres*yres)
+	resultsI2 = np.empty(xres*yres)
+	resultsV3 = np.empty(xres*yres)
+	resultsI3 = np.empty(xres*yres)
 
 	l = 0
 	for i in results:
@@ -180,13 +307,52 @@ if __name__ == '__main__':
 		resultsI[l] = i[1]
 		l += 1
 
+	# l = 0
+	# for i in results2:
+	# 	resultsV2[l] = i[0]
+	# 	resultsI2[l] = i[1]
+	# 	l += 1
+
+	# l = 0
+	# for i in results3:
+	# 	resultsV3[l] = i[0]
+	# 	resultsI3[l] = i[1]
+	# 	l += 1
+
+	# l = 0
+	# for i in results4:
+	# 	resultsV[l] += i[0]
+	# 	resultsI[l] += i[1]
+	# 	l += 1
+
+	# l = 0
+	# for i in results5:
+	# 	resultsV[l] += i[0]
+	# 	resultsI[l] += i[1]
+	# 	l += 1
+
+	# resultsV /= 5
+	# resultsI /= 5
+
 	heatmap1 = np.reshape(resultsV, (yres, xres))
 	heatmap2 = np.reshape(resultsI, (yres, xres))
+
+	# heatmap12 = np.reshape(resultsV2, (yres, xres))
+	# heatmap22 = np.reshape(resultsI2, (yres, xres))
+
+	# heatmap13 = np.reshape(resultsV3, (yres, xres))
+	# heatmap23 = np.reshape(resultsI3, (yres, xres))
 
 	#Save numpy array to text file:
 
 	np.savetxt("/Users/Raul/Desktop/Vacunados.txt", heatmap1)
 	np.savetxt("/Users/Raul/Desktop/Infectados.txt", heatmap2)
+
+	# np.savetxt("/Users/Raul/Desktop/Vacunados2.txt", heatmap12)
+	# np.savetxt("/Users/Raul/Desktop/Infectados2.txt", heatmap22)
+
+	# np.savetxt("/Users/Raul/Desktop/Vacunados3.txt", heatmap13)
+	# np.savetxt("/Users/Raul/Desktop/Infectados3.txt", heatmap23)
 
 
 	#Gráficos:
